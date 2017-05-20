@@ -67,3 +67,7 @@ class FriendshipValidationsTest(TestCase):
         Friendship(friend1=self.hagan, friend2=self.fallon, met_date=self.helpers.get_date()).save()
         err = self.helpers.get_validation_errors(self.friendship, 'friend1')
         self.assertEqual(['Jordan Fallon and Jordan Hagan are already friends.'], err)
+
+    def test_friendship_is_unique_on_update(self):
+        self.friendship.save()
+        self.assertIsNone(self.friendship.full_clean())
