@@ -27,7 +27,7 @@ class FriendshipValidationsTest(TestCase):
         self.friendship = Friendship(friend1=self.fallon, friend2=self.hagan, met_date=self.helpers.get_date())
 
     def test_it_can_be_valid(self):
-        self.assertEqual(self.friendship.full_clean(), None)
+        self.assertIsNone(self.friendship.full_clean())
 
     def test_friend1_cannot_be_null(self):
         self.friendship.friend1 = None
@@ -71,3 +71,58 @@ class FriendshipValidationsTest(TestCase):
     def test_friendship_is_unique_on_update(self):
         self.friendship.save()
         self.assertIsNone(self.friendship.full_clean())
+
+
+class FriendshipWithConduitValidationTest(TestCase):
+    def setUp(self):
+        self.helpers = TestHelpers()
+        self.fallon = Friend(name='Jordan Fallon')
+        self.fallon.save()
+        self.hagan = Friend(name='Jordan Hagan')
+        self.hagan.save()
+        self.conduit = Friend(name='Scott Wiedemann')
+        self.conduit.save()
+
+        self.conduit_friendship1 = Friendship(
+            friend1=self.fallon,
+            friend2=self.conduit,
+            met_date=self.helpers.get_date('2000-05-05')
+        )
+        self.conduit_friendship1.save()
+
+        self.conduit_friendship2 = Friendship(
+            friend1=self.hagan,
+            friend2=self.conduit,
+            met_date=self.helpers.get_date('2000-05-05')
+        )
+        self.conduit_friendship2.save()
+
+        self.friendship = Friendship(
+            friend1=self.fallon,
+            friend2=self.hagan,
+            met_date=self.helpers.get_date(),
+            conduit=self.conduit
+        )
+
+    def test_it_can_be_valid(self):
+        self.assertIsNone(self.friendship.full_clean())
+
+    def test_friend1_cannot_also_be_conduit(self):
+        self.friendship.conduit = self.friendship.friend1
+        err = self.helpers.get_validation_errors(self.friendship, 'friend1')
+        self.assertEqual(['Friend1 cannot also be conduit.'], err)
+
+    def test_friend2_cannot_also_be_conduit(self):
+        self.friendship.conduit = self.friendship.friend2
+        err = self.helpers.get_validation_errors(self.friendship, 'friend2')
+        self.assertEqual(['Friend2 cannot also be conduit.'], err)
+
+    def test_conduit_is_mutual_friend_with_friend1(self):
+        self.conduit_friendship1.delete()
+        friend1_err = self.helpers.get_validation_errors(self.friendship, 'friend1')
+        self.assertEqual(['Jordan Fallon and Scott Wiedemann are not friends.'], friend1_err)
+
+    def test_conduit_is_mutual_friend_with_friend2(self):
+        self.conduit_friendship2.delete()
+        friend2_err = self.helpers.get_validation_errors(self.friendship, 'friend2')
+        self.assertEqual(['Jordan Hagan and Scott Wiedemann are not friends.'], friend2_err)
