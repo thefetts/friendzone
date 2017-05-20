@@ -3,4 +3,4 @@ machine:
     version: 3.6.1
 test:
   override:
-    python manage.py test
+    - python manage.py test
