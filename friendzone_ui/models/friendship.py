@@ -4,12 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-
-class Friend(models.Model):
-    name = models.CharField(max_length=200, unique=True)
-
-    def __str__(self):
-        return self.name
+from .friend import Friend
 
 
 class Friendship(models.Model):
@@ -26,7 +21,19 @@ class Friendship(models.Model):
     def clean_fields(self, *args, **kwargs):
         super(Friendship, self).clean_fields(*args, **kwargs)
         self.friend1_is_not_friend2()
+        self.met_date_cannot_be_in_the_future()
+        self.friendship_is_unique()
 
     def friend1_is_not_friend2(self):
         if self.friend1 == self.friend2:
             raise ValidationError({'friend1': [f'{self.friend1} cannot be both friends.']})
+
+    def met_date_cannot_be_in_the_future(self):
+        if self.met_date > timezone.now().date():
+            raise ValidationError({'met_date': ['Date cannot be in the future.']})
+
+    def friendship_is_unique(self):
+        same_friendships = Friendship.objects.filter(friend1=self.friend1, friend2=self.friend2)
+        reverse_friendships = Friendship.objects.filter(friend1=self.friend2, friend2=self.friend1)
+        if len(same_friendships) + len(reverse_friendships) > 0:
+            raise ValidationError({'friend1': [f'{self.friend1} and {self.friend2} are already friends.']})
